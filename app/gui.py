@@ -5,6 +5,7 @@ import datetime
 from functools import partial
 from copy import deepcopy
 import logging
+import traceback
 
 import customtkinter as ctk
 from babel.dates import format_date, get_day_names
@@ -916,6 +917,17 @@ def refresh_app(state):
     create_layout(state["root"], state)
 
 
+def tk_exception_handler(exc, val, tb):
+    error = "".join(traceback.format_exception(exc, val, tb))
+
+    logging.error(error)
+
+    messagebox.showerror(
+        "Ошибка",
+        "Произошла непредвиденная ошибка.\nПожалуйста проверьте log файл.",
+    )
+
+
 # =========================
 # CONTROLLERS
 # =========================
@@ -1405,6 +1417,7 @@ def configure_state(state):
 
 def run_gui():
     root = tk.Tk()
+    root.report_callback_exception = tk_exception_handler
 
     state = {
         "date": None,
