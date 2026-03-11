@@ -2,4 +2,7 @@ logs/
 data/
 __pycache__/
 listyvenv/
+build/
+dist/
+Listy.spec
 logo.xcf

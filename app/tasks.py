@@ -15,11 +15,16 @@ def load_tasks(filename, path):
 
             return data["tasks"]
     except FileNotFoundError:
-        logging.exception("Файл не найден:")
+        logging.info("Файл не найден:")
         return {}
-    except (json.JSONDecodeError, KeyError) as e:
-        fpath.rename(fpath.with_name(fpath.name + ".broken"))
+    except (json.JSONDecodeError, KeyError):
         logging.exception("Ошибка чтения JSON:")
+
+        try:
+            fpath.rename(fpath.with_name(fpath.name + ".broken"))
+        except OSError:
+            logging.exception("Ошибка сохранения .broken файла:")
+
         return None
 
 
@@ -97,17 +102,12 @@ def sync_tasks_data(tasks_data, filename, path):
         return False
 
 
-def reset_tasks_data(tasks_data):
-    tasks_data = None
-    return tasks_data
-
-
 def load_config(path):
     try:
         with open(path, "r", encoding="UTF-8") as finp:
             return json.load(finp)
     except FileNotFoundError:
-        logging.exception("Файл не найден:")
+        logging.info("Файл не найден:")
         return DEFAULT_SETTINGS
     except json.JSONDecodeError:
         logging.exception("Ошибка чтения JSON:")

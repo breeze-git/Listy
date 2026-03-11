@@ -317,7 +317,7 @@ def refresh_content(state):
     set_date_info(state)
 
     state["date"] = state["date_info"]["date"]
-    state["tasks_data"] = tasks.reset_tasks_data(state["tasks_data"])
+    state["tasks_data"] = None
 
     update_tasks(state)
 
@@ -1093,7 +1093,7 @@ def delete_file_controller(state, event=None):
             message="Произошла ошибка удаления! Попробуйте еще раз.",
         )
 
-    state["tasks_data"] = tasks.reset_tasks_data(state["tasks_data"])
+    state["tasks_data"] = None
     update_tasks(state)
 
 
