@@ -4,7 +4,7 @@ from pathlib import Path
 from platformdirs import user_data_dir, user_log_dir
 
 
-def get_base_dir():
+def get_base_dir() -> Path:
 
     if getattr(sys, "frozen", False):
 

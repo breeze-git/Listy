@@ -1,128 +1,124 @@
 import json
-import uuid
 import logging
+import uuid
 from pathlib import Path
 
-from config import DEFAULT_SETTINGS
+# =========================
+# TASKS
+# =========================
 
 
-def load_tasks(filename, path):
-    fpath = path / filename
+class Tasks:
+    data: dict[str, dict[str, str | bool]] | None
+    filename: str
+    path: Path
 
-    try:
-        with open(fpath, "r", encoding="UTF-8") as finp:
-            data = json.load(finp)
+    def __init__(self, filename: str, path: Path):
+        self.data = {}
+        self.filename = filename
+        self.path = path
 
-            return data["tasks"]
-    except FileNotFoundError:
-        logging.info("Файл не найден:")
-        return {}
-    except (json.JSONDecodeError, KeyError):
-        logging.exception("Ошибка чтения JSON:")
+        self.load_tasks()
+
+    def add_task(self, title: str, description: str) -> str | None:
+        id = str(uuid.uuid4())
+
+        if self.data is None:
+            return
+
+        self.data[id] = {
+            "title": title,
+            "description": description,
+            "done": False,
+        }
+
+        return id
+
+    def edit_task(self, id: str, title: str, description: str) -> dict | None:
+
+        if self.data is None:
+            return
+
+        self.data[id]["title"] = title
+        self.data[id]["description"] = description
+
+        return self.data[id]
+
+    def toggle_task(self, id: str) -> bool | None:
+
+        if self.data is None:
+            return
+
+        done = not self.data[id]["done"]
+        self.data[id]["done"] = done
+
+        return done
+
+    def remove_task(self, id: str) -> dict | bool | None:
+
+        if self.data is None:
+            return
+
+        task = self.data.pop(id, False)
+
+        return task
+
+    def sync_tasks_data(self) -> bool:
+        try:
+            if not self.data:
+                return self.delete_tasks_file()
+
+            return self.save_tasks()
+        except OSError:
+            logging.exception("Ошибка системы:")
+            return False
+
+    def load_tasks(self) -> None:
+        fpath = self.path / self.filename
 
         try:
-            fpath.rename(fpath.with_name(fpath.name + ".broken"))
+            with open(fpath, "r", encoding="UTF-8") as finp:
+                data = json.load(finp)
+
+                self.data = data["tasks"]
+        except FileNotFoundError:
+            logging.info("Файл не найден:")
+            self.data = {}
+        except (json.JSONDecodeError, KeyError):
+            logging.exception("Ошибка чтения JSON:")
+
+            try:
+                fpath.rename(fpath.with_name(fpath.name + ".broken"))
+            except OSError:
+                logging.exception("Ошибка сохранения .broken файла:")
+
+            self.data = None
+
+    def save_tasks(self) -> bool:
+        self.path.mkdir(parents=True, exist_ok=True)
+
+        fpath = self.path / self.filename
+        tpath = fpath.with_name(fpath.name + ".tmp")
+
+        data = {"tasks": self.data}
+
+        try:
+            with open(tpath, "w", encoding="UTF-8") as fout:
+                json.dump(data, fout, indent=4, ensure_ascii=False)
         except OSError:
-            logging.exception("Ошибка сохранения .broken файла:")
+            logging.exception("Ошибка системы:")
+            return False
 
-        return None
+        tpath.replace(fpath)
+        return True
 
+    def delete_tasks_file(self) -> bool:
+        fpath = self.path / self.filename
 
-def add_task(tasks_data, title, description):
-    id = str(uuid.uuid4())
+        try:
+            fpath.unlink(missing_ok=True)
+        except OSError:
+            logging.exception("Ошибка системы:")
+            return False
 
-    tasks_data[id] = {
-        "title": title,
-        "description": description,
-        "done": False,
-    }
-
-    return id
-
-
-def edit_task(tasks_data, id, title, description):
-    tasks_data[id]["title"] = title
-    tasks_data[id]["description"] = description
-
-    return tasks_data[id]
-
-
-def toggle_task(tasks_data, id):
-    done = not tasks_data[id]["done"]
-    tasks_data[id]["done"] = done
-
-    return done
-
-
-def remove_task(tasks_data, id):
-    task = tasks_data.pop(id, False)
-
-    return task
-
-
-def save_tasks(tasks_data, filename, path):
-    path.mkdir(parents=True, exist_ok=True)
-
-    fpath = path / filename
-    tpath = fpath.with_name(fpath.name + ".tmp")
-
-    data = {"tasks": tasks_data}
-
-    try:
-        with open(tpath, "w", encoding="UTF-8") as fout:
-            json.dump(data, fout, indent=4, ensure_ascii=False)
-    except OSError:
-        logging.exception("Ошибка системы:")
-        return False
-
-    tpath.replace(fpath)
-    return True
-
-
-def delete_tasks_file(filename, path):
-    fpath = path / filename
-
-    try:
-        fpath.unlink(missing_ok=True)
-    except OSError:
-        logging.exception("Ошибка системы:")
-        return False
-
-    return True
-
-
-def sync_tasks_data(tasks_data, filename, path):
-    try:
-        if not tasks_data:
-            return delete_tasks_file(filename, path)
-
-        return save_tasks(tasks_data, filename, path)
-    except OSError:
-        logging.exception("Ошибка системы:")
-        return False
-
-
-def load_config(path):
-    try:
-        with open(path, "r", encoding="UTF-8") as finp:
-            return json.load(finp)
-    except FileNotFoundError:
-        logging.info("Файл не найден:")
-        return DEFAULT_SETTINGS
-    except json.JSONDecodeError:
-        logging.exception("Ошибка чтения JSON:")
-        return DEFAULT_SETTINGS
-
-
-def write_config(path, config):
-    path.mkdir(parents=True, exist_ok=True)
-    fpath = path / "config.json"
-
-    try:
-        with open(fpath, "w", encoding="UTF-8") as fout:
-            json.dump(config, fout, indent=4, ensure_ascii=False)
-    except OSError:
-        logging.exception("Ошибка системы:")
-        return False
-
-    return True
+        return True
