@@ -70,7 +70,7 @@ class Tasks:
 
             return self.save_tasks()
         except OSError:
-            logging.exception("Ошибка системы:")
+            logging.exception("System error:")
             return False
 
     def load_tasks(self) -> None:
@@ -82,15 +82,15 @@ class Tasks:
 
                 self.data = data["tasks"]
         except FileNotFoundError:
-            logging.info("Файл не найден:")
+            logging.info("File not found:")
             self.data = {}
         except (json.JSONDecodeError, KeyError):
-            logging.exception("Ошибка чтения JSON:")
+            logging.exception("JSON reading error:")
 
             try:
                 fpath.rename(fpath.with_name(fpath.name + ".broken"))
             except OSError:
-                logging.exception("Ошибка сохранения .broken файла:")
+                logging.exception("File .broken saving error:")
 
             self.data = None
 
@@ -106,7 +106,7 @@ class Tasks:
             with open(tpath, "w", encoding="UTF-8") as fout:
                 json.dump(data, fout, indent=4, ensure_ascii=False)
         except OSError:
-            logging.exception("Ошибка системы:")
+            logging.exception("System error:")
             return False
 
         tpath.replace(fpath)
@@ -118,7 +118,7 @@ class Tasks:
         try:
             fpath.unlink(missing_ok=True)
         except OSError:
-            logging.exception("Ошибка системы:")
+            logging.exception("System error:")
             return False
 
         return True

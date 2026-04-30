@@ -35,6 +35,8 @@ ICONS_DIR = ASSETS_DIR / "icons"
 LIGHT_DIR = ICONS_DIR / "light"
 DARK_DIR = ICONS_DIR / "dark"
 
+LOCALES_DIR = BASE_DIR / "locales"
+
 APP_NAME = "Listy"
 DATA_DIR = Path(user_data_dir(APP_NAME, roaming=True))
 LOGS_DIR = Path(user_log_dir(APP_NAME))

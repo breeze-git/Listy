@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from listy import TodoApp
 
 
-def load_icons(icons_dir, theme_dir):
+def load_icons(icons_dir, theme_dir, lang):
     return {
         "favicon": tk.PhotoImage(file=icons_dir / "favicon.png"),
         "prev": tk.PhotoImage(file=theme_dir / "prev32.png"),
@@ -33,6 +33,9 @@ def load_icons(icons_dir, theme_dir):
         "erase32": tk.PhotoImage(file=theme_dir / "erase32.png"),
         "copy32": tk.PhotoImage(file=theme_dir / "copy32.png"),
         "theme": tk.PhotoImage(file=theme_dir / "theme48.png"),
+        "settings": tk.PhotoImage(file=theme_dir / "settings48.png"),
+        "language": tk.PhotoImage(file=theme_dir / f"language40{lang}.png"),
+        "data": tk.PhotoImage(file=theme_dir / "data40.png"),
     }
 
 
@@ -169,8 +172,9 @@ def configure_theme(root, th):
 
 def apply_theme(app: "TodoApp") -> None:
     theme, theme_dir = helpers.get_theme(app.config)
+    lang = app.config["lang"]
 
-    app.icons = load_icons(ICONS_DIR, theme_dir)
+    app.icons = load_icons(ICONS_DIR, theme_dir, lang)
     app.theme_use = theme
 
     configure_theme(app.root, theme)
@@ -178,13 +182,25 @@ def apply_theme(app: "TodoApp") -> None:
     ctk.set_appearance_mode(app.config["theme"])
 
 
+def apply_lang(app: "TodoApp") -> None:
+    locale = app.config["lang"]
+
+    app.lang = controllers.load_lang(locale)
+
+    if app.lang is None:
+        messagebox.showerror(
+            "Error",
+            "Failed to load language file. \nCheck the log for details.",
+        )
+
+
 # =========================
 # VIEW
 # =========================
 
 
-def create_top(app: "TodoApp") -> ttk.Frame:
-    frame = ttk.Frame(app.root, padding=5)
+def create_top(app: "TodoApp", container) -> ttk.Frame:
+    frame = ttk.Frame(container, padding=5)
 
     frame.grid_columnconfigure(0, minsize=220)
     frame.columnconfigure(0, weight=0)
@@ -213,15 +229,16 @@ def create_top(app: "TodoApp") -> ttk.Frame:
     dateframe = create_dateframe(app, frame)
     dateframe.grid(row=0, column=1, sticky="ne")
 
-    theme_btn = ttk.Button(
+    settings_btn = ttk.Button(
         frame,
-        image=app.icons["theme"],
+        image=app.icons["settings"],
         style="Flat.TButton",
         takefocus=THEME_CONFIG["btn_focus"],
         cursor=THEME_CONFIG["btn_cursor"],
-        command=partial(controllers.toggle_theme_controller, app),
+        command=partial(toggle_menu, app),
     )
-    theme_btn.grid(row=0, column=2, sticky="ne")
+
+    settings_btn.grid(row=0, column=2, sticky="ne")
 
     calendar_btn = ttk.Button(
         frame,
@@ -234,6 +251,80 @@ def create_top(app: "TodoApp") -> ttk.Frame:
 
     calendar_btn.grid(row=1, column=2, sticky="se")
 
+    return frame
+
+
+def toggle_menu(app: "TodoApp") -> None:
+
+    geom = app.root.geometry().split("+")
+    curr_x = geom[1]
+    curr_y = geom[2]
+
+    root_w, root_h = app.root_size
+
+    if app.menu_frame is not None:
+        app.menu_frame.place_forget()
+
+        app.root.geometry(f"{root_w}x{root_h}+{curr_x}+{curr_y}")
+
+        app.menu_frame = None
+
+        return
+
+    menu_w = 60
+    frame = ttk.Frame(app.root, width=menu_w)
+
+    sep = ttk.Separator(frame, orient="vertical")
+    sep.pack(side="left", fill="y")
+
+    content = create_menu_content(app, frame)
+    content.pack(fill="both", expand=True)
+
+    app.root.geometry(f"{root_w + menu_w}x{root_h}+{curr_x}+{curr_y}")
+
+    frame.place(relx=1.0, x=-menu_w, y=0, relheight=1.0)
+    frame.lift()
+
+    app.menu_frame = frame
+
+
+def create_menu_content(app: "TodoApp", parent: ttk.Frame) -> ttk.Frame:
+    frame = ttk.Frame(parent, padding=5)
+
+    frame.columnconfigure(0, weight=1)
+    frame.rowconfigure(0, weight=0)
+    frame.rowconfigure(1, weight=0)
+    frame.rowconfigure(2, weight=0)
+
+    theme_btn = ttk.Button(
+        frame,
+        image=app.icons["theme"],
+        style="Flat.TButton",
+        takefocus=THEME_CONFIG["btn_focus"],
+        cursor=THEME_CONFIG["btn_cursor"],
+        command=partial(controllers.toggle_theme_controller, app),
+    )
+    theme_btn.grid(row=0, column=0, sticky="nesw", pady=(0, 10))
+
+    open_data_btn = ttk.Button(
+        frame,
+        image=app.icons["data"],
+        style="Flat.TButton",
+        takefocus=THEME_CONFIG["btn_focus"],
+        cursor=THEME_CONFIG["btn_cursor"],
+        command=partial(controllers.open_data_folder, app),
+    )
+    open_data_btn.grid(row=1, column=0, sticky="nesw", pady=(0, 10))
+
+    change_language_btn = ttk.Button(
+        frame,
+        image=app.icons["language"],
+        style="Flat.TButton",
+        takefocus=THEME_CONFIG["btn_focus"],
+        cursor=THEME_CONFIG["btn_cursor"],
+        command=partial(controllers.change_language_controller, app),
+    )
+    change_language_btn.grid(row=2, column=0, sticky="nesw", pady=(0, 10))
     return frame
 
 
@@ -285,15 +376,15 @@ def create_dateframe(app: "TodoApp", parent: ttk.Frame) -> ttk.Frame:
     return frame
 
 
-def create_body(app: "TodoApp") -> ttk.Frame:
-    frame = ttk.Frame(app.root)
+def create_body(app: "TodoApp", container) -> ttk.Frame:
+    frame = ttk.Frame(container)
 
     app.body = frame
 
     app.update_tasks()
 
     tasks_frame = app.tasks_frame
-    tasks_frame.pack(anchor="center", fill="both", expand=True)
+    tasks_frame.pack(anchor="center", fill="both", expand=True, ipadx=10)
 
     tasks_frame.bind_all("<Button-4>", partial(on_mousewheel, tasks_frame))
     tasks_frame.bind_all("<Button-5>", partial(on_mousewheel, tasks_frame))
@@ -323,12 +414,12 @@ def refresh_tasks_list(app: "TodoApp") -> ctk.CTkScrollableFrame:
     frame._parent_canvas.yview_moveto(0)
 
     if not tasks_data:
-        helpers.show_isempty(frame)
+        helpers.show_isempty(app, frame)
 
     for id in tasks_data:
         task_frame = create_task_widget(app, id, frame)
 
-        task_frame.pack(anchor="nw", fill="x", pady=5, padx=(8, 16))
+        task_frame.pack(anchor="nw", fill="x", pady=5, padx=(8, 13))
 
         app.tasks_widgets[id] = task_frame
 
@@ -400,8 +491,12 @@ def bind_recursive(widget, callback):
 
 def create_task_window(app: "TodoApp", id: str) -> None:
     window = tk.Toplevel()
-    window.title("Просмотр и изменение задачи")
-    window.geometry("500x400")
+    window.title(app.lang["manage_task"])
+
+    win_w, win_h = 500, 400
+    win_x, win_y = helpers.get_window_coords(app.root, win_size=(win_w, win_h))
+
+    window.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
     window.resizable(False, False)
 
     manage_panel = create_manage_panel(window, app, id)
@@ -486,19 +581,21 @@ def create_manage_panel(window: tk.Toplevel, app: "TodoApp", id: str) -> ttk.Fra
 
     window.protocol(
         "WM_DELETE_WINDOW",
-        partial(controllers.close_window_controller, window, snap_data, editor),
+        partial(controllers.close_window_controller, app, window, snap_data, editor),
     )
 
     window.bind(
         "<Escape>",
-        partial(controllers.close_window_controller, window, snap_data, editor, None),
+        partial(
+            controllers.close_window_controller, app, window, snap_data, editor, None
+        ),
     )
 
     return frame
 
 
-def create_footer(app: "TodoApp") -> ttk.Frame:
-    frame = ttk.Frame(app.root, padding=5)
+def create_footer(app: "TodoApp", parent) -> ttk.Frame:
+    frame = ttk.Frame(parent, padding=5)
 
     frame.rowconfigure(0, weight=1)
     frame.columnconfigure(0, weight=1)
@@ -556,8 +653,12 @@ def create_footer(app: "TodoApp") -> ttk.Frame:
 
 def create_add_task_window(app: "TodoApp", event: None | tk.Event = None) -> None:
     window = tk.Toplevel()
-    window.title("Добавить задачу")
-    window.geometry("400x400")
+    window.title(app.lang["add_task"])
+
+    win_w, win_h = 400, 400
+    win_x, win_y = helpers.get_window_coords(app.root, win_size=(win_w, win_h))
+
+    window.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
     window.resizable(False, False)
 
     add_frame = create_add_frame(window, app)
@@ -573,7 +674,7 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
     frame.rowconfigure((0, 1, 2, 4), weight=0)
     frame.rowconfigure(3, weight=5)
 
-    title_label = ttk.Label(frame, text="Заголовок", style="Small.TLabel")
+    title_label = ttk.Label(frame, text=app.lang["title"], style="Small.TLabel")
     title_label.grid(row=0, column=0, sticky="new")
 
     task_entry = ttk.Entry(
@@ -585,7 +686,9 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
     )
     task_entry.grid(row=1, column=0, sticky="new", pady=5)
 
-    description_label = ttk.Label(frame, text="Описание", style="Small.TLabel")
+    description_label = ttk.Label(
+        frame, text=app.lang["description"], style="Small.TLabel"
+    )
     description_label.grid(row=2, column=0, sticky="new")
 
     task_description = tk.Text(
@@ -604,7 +707,7 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
 
     add_btn = ttk.Button(
         frame,
-        text="Добавить",
+        text=app.lang["add_btn"],
         takefocus=THEME_CONFIG["btn_focus"],
         cursor=THEME_CONFIG["btn_cursor"],
         style="Add.TButton",
@@ -627,6 +730,7 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
         "WM_DELETE_WINDOW",
         partial(
             controllers.close_window_controller,
+            app,
             window,
             snap_data,
             task_description,
@@ -638,6 +742,7 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
         "<Escape>",
         partial(
             controllers.close_window_controller,
+            app,
             window,
             snap_data,
             task_description,
@@ -661,9 +766,14 @@ def create_calendar_window(app: "TodoApp") -> None:
         return
 
     window = tk.Toplevel()
-    window.title("Календарь")
-    window.geometry("550x450")
+    window.title(app.lang["calendar"])
+
+    win_w, win_h = 550, 450
+    win_x, win_y = helpers.get_window_coords(app.root, 10)
+
+    window.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
     window.resizable(False, False)
+    window.transient(app.root)
     app.calendar_window = window
 
     window.rowconfigure(0, weight=0)
@@ -789,7 +899,9 @@ def create_content_frame(parent: ttk.Frame, app: "TodoApp") -> ttk.Frame:
 
 
 def create_calendar_content(app: "TodoApp", matrix: list, date: datetime.date) -> None:
-    for row in range(6):
+    weeks = len(matrix)
+
+    for row in range(weeks):
         for col in range(7):
             value = matrix[row][col]
 
@@ -853,8 +965,8 @@ def add_task_controller(
     if not isvalid:
         messagebox.showinfo(
             parent=window,
-            title="Валидация данных",
-            message="Длина заголовка должна быть не менее 3 символов!",
+            title=app.lang["validation"],
+            message=app.lang["title_validation_error"],
         )
         return
 
@@ -893,23 +1005,39 @@ def limit_scroll(frame: ctk.CTkScrollableFrame, event: tk.Event) -> None | str:
 
 
 def create_layout(root: tk.Tk, app: "TodoApp") -> None:
+    root.withdraw()
+
     root.title("Listy v0.3")
     root.iconphoto(True, app.icons["favicon"])
-    root.geometry("550x750")
+
+    app.root_size = (550, 750)
+
+    root_w, root_h = app.root_size
+
+    root_x, root_y = helpers.get_root_coords(app, root_w, root_h)
+
+    root.geometry(f"{root_w}x{root_h}+{root_x}+{root_y}")
+    root.deiconify()
+
     root.resizable(False, False)
 
     root.protocol("WM_DELETE_WINDOW", partial(controllers.app_exit_controller, app))
 
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=0)
-    root.rowconfigure(1, weight=5)
-    root.rowconfigure(2, weight=0)
+    main_container = tk.Frame(app.root, width=root_w, height=root_h)
+    main_container.grid_propagate(False)
 
-    top = create_top(app)
+    main_container.columnconfigure(0, weight=1)
+    main_container.rowconfigure(0, weight=0)
+    main_container.rowconfigure(1, weight=5)
+    main_container.rowconfigure(2, weight=0)
+
+    top = create_top(app, main_container)
     top.grid(row=0, column=0, sticky="nsew")
 
-    body = create_body(app)
+    body = create_body(app, main_container)
     body.grid(row=1, column=0, sticky="nsew")
 
-    footer = create_footer(app)
+    footer = create_footer(app, main_container)
     footer.grid(row=2, column=0, sticky="nsew")
+
+    main_container.place(x=0, y=0)

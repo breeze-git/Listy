@@ -40,6 +40,8 @@ class CalendarInfo:
 
 class TodoApp:
     root: tk.Tk
+    root_size: None | tuple[int, int]
+    root_coords: None | list[str]
     date: datetime.date | None
     date_info: DateInfo
     filename: str | None
@@ -50,6 +52,7 @@ class TodoApp:
     body: tk.Frame | None
     tasks_frame: ctk.CTkScrollableFrame | None
     calendar_window: tk.Toplevel | None
+    menu_frame: ttk.Frame | None
     icons: None | dict
     theme_use: None | dict
     tasks_widgets: dict
@@ -58,6 +61,8 @@ class TodoApp:
 
     def __init__(self, root):
         self.root = root
+        self.root_size = None
+        self.root_coords = None
         self.date = None
         self.date_info = DateInfo()
         self.filename = None
@@ -72,6 +77,7 @@ class TodoApp:
         self.body = None
         self.tasks_frame = None
         self.calendar_window = None
+        self.menu_frame = None
         self.tasks_widgets = {}
         self.btns = {}
 
@@ -111,7 +117,7 @@ class TodoApp:
 
         filename = helpers.get_filename_from_date(self.date)
 
-        self.tasks_data = controllers.load_tasks_ui(filename)
+        self.tasks_data = controllers.load_tasks_ui(self, filename)
         self.snapshot = deepcopy(self.tasks_data.data)
 
     def set_date_info(self) -> None:
@@ -152,11 +158,14 @@ class TodoApp:
             self.root.bind(key, partial(handler, self))
 
     def run_gui(self) -> None:
+        gui.apply_lang(self)
         gui.apply_theme(self)
 
         gui.create_layout(self.root, self)
 
     def refresh_app(self) -> None:
+        self.root_coords = self.root.geometry().split("+")
+
         for key in ["<Button-4>", "<Button-5>", "<MouseWheel>"]:
             self.root.unbind_all(key)
 

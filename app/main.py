@@ -7,6 +7,17 @@ from config import LOGS_DIR
 from listy import TodoApp
 
 # =========================
+# WINDOWS DPI
+# =========================
+
+try:
+    from ctypes import windll
+
+    windll.shcore.SetProcessDpiAwareness(1)
+except:
+    pass
+
+# =========================
 # LOGGING
 # =========================
 
@@ -20,7 +31,7 @@ logging.basicConfig(
     encoding="utf-8",
 )
 
-logging.info("Приложение запущено.")
+logging.info("App is started.")
 
 
 # =========================
@@ -34,8 +45,8 @@ def tk_exception_handler(exc, val, tb) -> None:
     logging.error(error)
 
     messagebox.showerror(
-        "Ошибка",
-        "Произошла непредвиденная ошибка.\nПожалуйста проверьте log файл.",
+        "Error",
+        "An unexpected error occurred.\nCheck the log for details.",
     )
 
 

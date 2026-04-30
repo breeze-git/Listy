@@ -1,0 +1,23 @@
+{
+  "empty_list": "No tasks found",
+  "title": "Title",
+  "description": "Description",
+  "add_btn": "Add",
+  "add_task": "Add task",
+  "manage_task": "View and edit task",
+  "confirm_action": "Confirm action",
+  "save_confirm": "You have unsaved changes. Would you like to save them?",
+  "close_confirm": "Are you sure you want to close the window? All unsaved changes will be lost.",
+  "delete_list_confirm": "Are you sure you want to delete the list? Deleted data cannot be recovered!",
+  "delete_task_confirm": "Are you sure you want to delete this task?",
+  "calendar": "Calendar",
+  "error": "Error",
+  "validation": "Data validation",
+  "title_validation_error": "Title length must be at least 3 characters!",
+  "saving": "Saving data",
+  "save_error": "Failed to save changes! Please try again.",
+  "read_error": "Data read error",
+  "backup": "File is corrupted! A backup copy has been saved.",
+  "deleting": "Deleting data",
+  "delete_error": "An error occurred during deletion! Please try again."
+}

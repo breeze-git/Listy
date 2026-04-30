@@ -1,6 +1,9 @@
 import datetime
 import json
 import logging
+import os
+import platform
+import subprocess
 import tkinter as tk
 from copy import deepcopy
 from pathlib import Path
@@ -12,7 +15,7 @@ from dateutil.relativedelta import relativedelta
 
 import helpers
 import tasks
-from config import DATA_DIR, DEFAULT_SETTINGS
+from config import DATA_DIR, DEFAULT_SETTINGS, LOCALES_DIR
 
 if TYPE_CHECKING:
     from listy import TodoApp
@@ -27,7 +30,7 @@ def refresh_content_controller(app: "TodoApp", date: datetime.date) -> None:
     ismodified = helpers.check_ismodified(app)
 
     if ismodified:
-        save = helpers.ask_to_save()
+        save = helpers.ask_to_save(app)
 
         if save:
             save_file_controller(app)
@@ -60,18 +63,18 @@ def save_tasks_ui_controller(app: "TodoApp") -> None:
 
     else:
         messagebox.showerror(
-            title="Сохранение данных",
-            message="Не удалось сохранить изменения! Попробуйте еще раз.",
+            title=app.lang["saving"],
+            message=app.lang["save_error"],
         )
 
 
-def load_tasks_ui(filename: str) -> tasks.Tasks:
+def load_tasks_ui(app, filename: str) -> tasks.Tasks:
     tasks_data = tasks.Tasks(filename, DATA_DIR)
 
     if tasks_data.data is None:
         messagebox.showerror(
-            title="Ошибка чтения данных",
-            message="Файл поврежден! Сохранена резервная копия файла.",
+            title=app.lang["read_error"],
+            message=app.lang["backup"],
         )
         tasks_data.data = {}
 
@@ -88,6 +91,33 @@ def toggle_theme_controller(app: "TodoApp") -> None:
     write_config(DATA_DIR, app.config)
 
     app.refresh_app()
+
+
+def change_language_controller(app: "TodoApp") -> None:
+    lang = app.config["lang"]
+
+    lang = "en_US" if lang == "ru_RU" else "ru_RU"
+
+    app.config["lang"] = lang
+
+    write_config(DATA_DIR, app.config)
+
+    app.refresh_app()
+
+
+def open_data_folder(app: "TodoApp") -> None:
+
+    kwargs = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.STDOUT,
+    }
+
+    if platform.system() == "Windows":
+        os.startfile(DATA_DIR)
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", DATA_DIR], **kwargs)
+    else:
+        subprocess.Popen(["xdg-open", DATA_DIR], **kwargs)
 
 
 def toggle_task_controller(app: "TodoApp", id: str, btn: ttk.Button) -> None:
@@ -110,8 +140,8 @@ def save_task_controller(
     if not isvalid:
         messagebox.showinfo(
             parent=window,
-            title="Валидация данных",
-            message="Длина заголовка должна быть не менее 3 символов!",
+            title=app.lang["validation"],
+            message=app.lang["title_validation_error"],
         )
         return
 
@@ -134,8 +164,8 @@ def copy_controller(app: "TodoApp", editor: tk.Text) -> None:
 def delete_task_controller(app: "TodoApp", id: str, window: tk.Toplevel) -> None:
     close = messagebox.askyesno(
         parent=window,
-        title="Подтвержение действия",
-        message="Вы уверены что хотите удалить задачу?",
+        title=app.lang["confirm_action"],
+        message=app.lang["delete_task_confirm"],
     )
 
     if not close:
@@ -151,15 +181,15 @@ def delete_task_controller(app: "TodoApp", id: str, window: tk.Toplevel) -> None
     app.tasks_widgets.pop(id)
 
     if not app.tasks_widgets:
-        helpers.show_isempty(app.tasks_frame)
+        helpers.show_isempty(app, app.tasks_frame)
 
     helpers.configure_save_btn_state(app, "normal")
 
 
 def delete_file_controller(app: "TodoApp", event: None | tk.Event = None) -> None:
     delete = messagebox.askyesno(
-        title="Подтверждение действия",
-        message="Вы уверены что хотите удалить список? Восстановить удаленные данные будет невозможно!",
+        title=app.lang["confirm_action"],
+        message=app.lang["delete_list_confirm"],
     )
 
     if not delete:
@@ -169,8 +199,8 @@ def delete_file_controller(app: "TodoApp", event: None | tk.Event = None) -> Non
 
     if not res:
         messagebox.showerror(
-            title="Удаление данных",
-            message="Произошла ошибка удаления! Попробуйте еще раз.",
+            title=app.lang["error"],
+            message=app.lang["delete_error"],
         )
 
     app.tasks_data = None
@@ -201,6 +231,7 @@ def calendar_window_controller(
 
 
 def close_window_controller(
+    app: "TodoApp",
     window: tk.Toplevel,
     snap_data: dict,
     editor: tk.Text,
@@ -210,7 +241,7 @@ def close_window_controller(
     data = helpers.get_data_from_form(editor, entry)
 
     if snap_data != data:
-        close = helpers.ask_to_close(window)
+        close = helpers.ask_to_close(app, window)
 
         if not close:
             return
@@ -224,12 +255,31 @@ def app_exit_controller(app: "TodoApp", event: None | tk.Event = None) -> None:
     ismodified = helpers.check_ismodified(app)
 
     if ismodified:
-        save = helpers.ask_to_save()
+        save = helpers.ask_to_save(app)
 
         if save:
             save_file_controller(app)
 
     app.root.destroy()
+
+
+# =========================
+# LOCALE
+# =========================
+
+
+def load_lang(locale: str):
+    path = LOCALES_DIR / f"{locale}.json"
+
+    try:
+        with open(path, "r", encoding="UTF-8") as finp:
+            return json.load(finp)
+    except FileNotFoundError:
+        logging.info("File not found:")
+        return None
+    except json.JSONDecodeError:
+        logging.exception("JSON reading error:")
+        return None
 
 
 # =========================
@@ -242,10 +292,10 @@ def load_config(path: Path) -> dict:
         with open(path, "r", encoding="UTF-8") as finp:
             return json.load(finp)
     except FileNotFoundError:
-        logging.info("Файл не найден:")
+        logging.info("File not found:")
         return DEFAULT_SETTINGS
     except json.JSONDecodeError:
-        logging.exception("Ошибка чтения JSON:")
+        logging.exception("JSON reading error:")
         return DEFAULT_SETTINGS
 
 
@@ -257,7 +307,7 @@ def write_config(path: Path, config: dict) -> bool:
         with open(fpath, "w", encoding="UTF-8") as fout:
             json.dump(config, fout, indent=4, ensure_ascii=False)
     except OSError:
-        logging.exception("Ошибка системы:")
+        logging.exception("System error:")
         return False
 
     return True
