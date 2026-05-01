@@ -22,11 +22,9 @@ jobs:
 
       - name: Build with PyInstaller
         run: pyinstaller --noconsole --onedir --add-data "assets;assets" --icon="assets/icons/favicon.ico" -n Listy app/main.py
-
-      - name: Build Installer (Inno Setup)
-        uses: lowleveldesign/iscc-action@v1.3.1
-        with:
-          recipe: installer.iss
+      
+      - name: Build Installer (Direct ISCC)
+        run: iscc installer.iss
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
