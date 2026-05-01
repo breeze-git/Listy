@@ -105,9 +105,9 @@ class TodoApp:
             helpers.configure_delete_btn_state(self)
             helpers.configure_save_btn_state(self, "disable")
 
-        gui.bind_recursive(
-            self.tasks_frame, lambda e: gui.limit_scroll(self.tasks_frame, e)
-        )
+        canvas = self.tasks_frame._parent_canvas
+
+        gui.bind_hover_recursive(self.tasks_frame, canvas)
 
     def reload_data(self) -> None:
         if self.tasks_frame is not None:
@@ -150,6 +150,8 @@ class TodoApp:
         self.hotkeys = {
             "<Control-s>": controllers.save_file_controller,
             "<Control-n>": gui.create_add_task_window,
+            "<Control-p>": gui.toggle_menu,
+            "<Control-t>": gui.create_calendar_window,
             "<Delete>": controllers.delete_file_controller,
             "<Escape>": controllers.app_exit_controller,
         }

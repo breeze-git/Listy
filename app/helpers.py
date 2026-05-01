@@ -61,6 +61,11 @@ def trim_title(title: str) -> str:
 def get_month_matrix(date: datetime.date) -> list:
     matrix = monthcalendar(date.year, date.month)
 
+    if len(matrix) <= 5:
+        row = [0] * 7
+
+        matrix.append(row)
+
     return matrix
 
 

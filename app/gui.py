@@ -254,7 +254,7 @@ def create_top(app: "TodoApp", container) -> ttk.Frame:
     return frame
 
 
-def toggle_menu(app: "TodoApp") -> None:
+def toggle_menu(app: "TodoApp", event: None | tk.Event = None) -> None:
 
     geom = app.root.geometry().split("+")
     curr_x = geom[1]
@@ -386,11 +386,12 @@ def create_body(app: "TodoApp", container) -> ttk.Frame:
     tasks_frame = app.tasks_frame
     tasks_frame.pack(anchor="center", fill="both", expand=True, ipadx=10)
 
-    tasks_frame.bind_all("<Button-4>", partial(on_mousewheel, tasks_frame))
-    tasks_frame.bind_all("<Button-5>", partial(on_mousewheel, tasks_frame))
+    canvas = tasks_frame._parent_canvas
 
-    tasks_frame._parent_canvas.bind("<MouseWheel>", partial(limit_scroll, tasks_frame))
-    tasks_frame._parent_canvas.bind("<Button-4>", partial(limit_scroll, tasks_frame))
+    tasks_frame.bind("<Enter>", lambda e: bind_scroll_to_canvas(canvas))
+    tasks_frame.bind("<Leave>", lambda e: unbind_scroll_from_canvas(canvas))
+
+    bind_hover_recursive(tasks_frame, canvas)
 
     return frame
 
@@ -477,16 +478,13 @@ def create_task_widget(
     )
     manage_btn.grid(row=0, column=2, sticky="e")
 
-    bind_recursive(task_frame, lambda e: limit_scroll(parent, e))
-
     return task_frame
 
 
-def bind_recursive(widget, callback):
-    widget.bind("<MouseWheel>", callback)
-    widget.bind("<Button-4>", callback)
+def bind_hover_recursive(widget, canvas):
+    widget.bind("<Enter>", lambda e: bind_scroll_to_canvas(canvas), add="+")
     for child in widget.winfo_children():
-        bind_recursive(child, callback)
+        bind_hover_recursive(child, canvas)
 
 
 def create_task_window(app: "TodoApp", id: str) -> None:
@@ -756,12 +754,12 @@ def create_add_frame(window: tk.Toplevel, app: "TodoApp") -> ttk.Frame:
 def add_task_widget(app: "TodoApp", id: str) -> None:
     task_widget = create_task_widget(app, id, app.tasks_frame)
 
-    task_widget.pack(anchor="nw", fill="x", pady=5, padx=(8, 16))
+    task_widget.pack(anchor="nw", fill="x", pady=5, padx=(8, 13))
 
     app.tasks_widgets[id] = task_widget
 
 
-def create_calendar_window(app: "TodoApp") -> None:
+def create_calendar_window(app: "TodoApp", event: None | tk.Event = None) -> None:
     if app.calendar_window is not None:
         return
 
@@ -983,20 +981,27 @@ def add_task_controller(
     window.destroy()
 
 
-def on_mousewheel(scroll_frame: ctk.CTkScrollableFrame, event: tk.Event) -> None:
-    if event.num == 4:
-        scroll_frame._parent_canvas.yview_scroll(-1, "units")
-    elif event.num == 5:
-        scroll_frame._parent_canvas.yview_scroll(1, "units")
-    else:
-        scroll_frame._parent_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-
-def limit_scroll(frame: ctk.CTkScrollableFrame, event: tk.Event) -> None | str:
-    y_pos = frame._parent_canvas.yview()[0]
-    if y_pos <= 0:
-        if (event.delta and event.delta > 0) or (event.num == 4):
+def on_mousewheel_logic(canvas, event):
+    if event.num == 4 or (event.delta and event.delta > 0):
+        if canvas.yview()[0] <= 0:
             return "break"
+        canvas.yview_scroll(-1, "units")
+    elif event.num == 5 or (event.delta and event.delta < 0):
+        canvas.yview_scroll(1, "units")
+
+
+def bind_scroll_to_canvas(canvas):
+    # Windows/MacOS
+    canvas.bind_all("<MouseWheel>", lambda e: on_mousewheel_logic(canvas, e))
+    # Linux
+    canvas.bind_all("<Button-4>", lambda e: on_mousewheel_logic(canvas, e))
+    canvas.bind_all("<Button-5>", lambda e: on_mousewheel_logic(canvas, e))
+
+
+def unbind_scroll_from_canvas(canvas):
+    canvas.unbind_all("<MouseWheel>")
+    canvas.unbind_all("<Button-4>")
+    canvas.unbind_all("<Button-5>")
 
 
 # =========================
