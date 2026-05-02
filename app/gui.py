@@ -427,7 +427,7 @@ def refresh_tasks_list(app: "TodoApp") -> ctk.CTkScrollableFrame:
     return frame
 
 
-def clear_frame(frame):
+def clear_frame(frame: ctk.CTkScrollableFrame) -> None:
     for widget in frame.winfo_children():
         widget.destroy()
 
@@ -481,12 +481,6 @@ def create_task_widget(
     return task_frame
 
 
-def bind_hover_recursive(widget, canvas):
-    widget.bind("<Enter>", lambda e: bind_scroll_to_canvas(canvas), add="+")
-    for child in widget.winfo_children():
-        bind_hover_recursive(child, canvas)
-
-
 def create_task_window(app: "TodoApp", id: str) -> None:
     window = tk.Toplevel()
     window.title(app.lang["manage_task"])
@@ -496,6 +490,7 @@ def create_task_window(app: "TodoApp", id: str) -> None:
 
     window.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
     window.resizable(False, False)
+    window.transient(app.root)
 
     manage_panel = create_manage_panel(window, app, id)
     manage_panel.pack(fill="both", expand=True)
@@ -658,6 +653,7 @@ def create_add_task_window(app: "TodoApp", event: None | tk.Event = None) -> Non
 
     window.geometry(f"{win_w}x{win_h}+{win_x}+{win_y}")
     window.resizable(False, False)
+    window.transient(app.root)
 
     add_frame = create_add_frame(window, app)
     add_frame.pack(fill="both", expand=True)
@@ -981,7 +977,13 @@ def add_task_controller(
     window.destroy()
 
 
-def on_mousewheel_logic(canvas, event):
+def bind_hover_recursive(widget, canvas: tk.Canvas) -> None:
+    widget.bind("<Enter>", lambda e: bind_scroll_to_canvas(canvas), add="+")
+    for child in widget.winfo_children():
+        bind_hover_recursive(child, canvas)
+
+
+def on_mousewheel_logic(canvas: tk.Canvas, event: tk.Event):
     if event.num == 4 or (event.delta and event.delta > 0):
         if canvas.yview()[0] <= 0:
             return "break"
@@ -990,15 +992,15 @@ def on_mousewheel_logic(canvas, event):
         canvas.yview_scroll(1, "units")
 
 
-def bind_scroll_to_canvas(canvas):
-    # Windows/MacOS
+def bind_scroll_to_canvas(canvas: tk.Canvas) -> None:
+    # Windows
     canvas.bind_all("<MouseWheel>", lambda e: on_mousewheel_logic(canvas, e))
     # Linux
     canvas.bind_all("<Button-4>", lambda e: on_mousewheel_logic(canvas, e))
     canvas.bind_all("<Button-5>", lambda e: on_mousewheel_logic(canvas, e))
 
 
-def unbind_scroll_from_canvas(canvas):
+def unbind_scroll_from_canvas(canvas: tk.Canvas) -> None:
     canvas.unbind_all("<MouseWheel>")
     canvas.unbind_all("<Button-4>")
     canvas.unbind_all("<Button-5>")
@@ -1012,7 +1014,7 @@ def unbind_scroll_from_canvas(canvas):
 def create_layout(root: tk.Tk, app: "TodoApp") -> None:
     root.withdraw()
 
-    root.title("Listy v0.3")
+    root.title("Listy 1.0")
     root.iconphoto(True, app.icons["favicon"])
 
     app.root_size = (550, 750)

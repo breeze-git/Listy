@@ -2,9 +2,9 @@
 
 Минималистичный и функциональный планировщик задач, написанный на Python с использованием библиотеки Tkinter. Проект создан для тех, кто ценит простоту, локальное хранение данных и удобный интерфейс.
 
-<img width="1150" height="813" alt="Image" src="https://github.com/user-attachments/assets/9ba16ed2-3f61-4838-bf79-83ae115debcd" />
-<img width="1002" height="810" alt="Image" src="https://github.com/user-attachments/assets/8f7fe529-3aab-4add-a8a9-7ffec562a245" />
-<img width="659" height="830" alt="Image" src="https://github.com/user-attachments/assets/9e1f1191-ff77-4cd2-b5a6-52922a552a65" />
+<img width="1280" height="853" alt="Image" src="https://github.com/user-attachments/assets/51bea9d3-8000-40e5-9982-4daefc69b369" />
+<img width="1280" height="853" alt="Image" src="https://github.com/user-attachments/assets/6861274e-37e1-462d-bd5c-948b01e1762d" />
+<img width="1280" height="853" alt="Image" src="https://github.com/user-attachments/assets/ad596354-0578-4c18-afb1-34a8ae75c496" />
 
 ## Основные возможности
 
